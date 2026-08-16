@@ -1,0 +1,34 @@
+{
+  "name": "Retasify Microservices",
+  "image": "mcr.microsoft.com/devcontainers/base:trixie",
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17",
+      "installMaven": true,
+      "installGradle": false
+    }
+  },
+
+  "forwardPorts": [8081, 8082, 8083, 8084],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack"
+      ],
+      "settings": {
+        "maven.executable.path": "/usr/local/sdkman/candidates/maven/current/bin/mvn",
+        "java.configuration.updateBuildConfiguration": "automatic"
+      }
+    },
+    "jetbrains": {
+      "backend": "IntelliJ"
+    }
+  },
+
+  "postCreateCommand": "java -version && mvn -version",
+
+  "remoteUser": "vscode"
+}
