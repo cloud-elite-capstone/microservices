@@ -1,133 +1,39 @@
 package com.retasify.productservice.dto;
 
-import com.retasify.productservice.model.Product;
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import jakarta.annotation.Nonnull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.locationtech.jts.geom.Point;
 
-public class ProductDto {
+public record ProductDto(
+        UUID id,
 
-    private UUID id;
-    private String name;
-    private String description;
-    private BigDecimal price;
-    private BigDecimal shippingFee;
-    private int quantity;
-    private Point location;
-    private UUID categoryId;
-    private String imageUrl;
-    private UUID shopId;
+        @NotBlank(message = "Product name is required")
+        String name,
 
-    public ProductDto() {
-    }
+        String description,
 
-    public static ProductDto fromEntity(Product product) {
-        ProductDto dto = new ProductDto();
-        dto.setId(product.getId());
-        dto.setName(product.getName());
-        dto.setDescription(product.getDescription());
-        dto.setPrice(product.getPrice());
-        dto.setShippingFee(product.getShippingFee());
-        dto.setQuantity(product.getQuantity());
-        dto.setLocation(product.getLocation());
-        dto.setCategoryId(product.getCategoryId());
-        dto.setImageUrl(product.getImageUrl());
-        dto.setShopId(product.getShopId());
-        return dto;
-    }
+        @NotNull(message = "Product price is required")
+        @PositiveOrZero(message = "Price must be zero or positive")
+        BigDecimal price,
 
-    public Product toEntity() {
-        Product product = new Product();
-        product.setId(this.id);
-        product.setName(this.name);
-        product.setDescription(this.description);
-        product.setPrice(this.price);
-        product.setShippingFee(this.shippingFee);
-        product.setQuantity(this.quantity);
-        product.setLocation(this.location);
-        product.setCategoryId(this.categoryId);
-        product.setImageUrl(this.imageUrl);
-        product.setShopId(this.shopId);
-        return product;
-    }
+        @PositiveOrZero(message = "Shipping fee must be zero or positive")
+        BigDecimal shippingFee,
 
-    public UUID getId() {
-        return id;
-    }
+        int quantity,
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+        Point location,
 
-    public String getName() {
-        return name;
-    }
+        @NotNull(message = "Category id is required")
+        UUID categoryId,
 
-    public void setName(String name) {
-        this.name = name;
-    }
+        String imageUrl,
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public BigDecimal getShippingFee() {
-        return shippingFee;
-    }
-
-    public void setShippingFee(BigDecimal shippingFee) {
-        this.shippingFee = shippingFee;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public Point getLocation() {
-        return location;
-    }
-
-    public void setLocation(Point location) {
-        this.location = location;
-    }
-
-    public UUID getCategoryId() {
-        return categoryId;
-    }
-
-    public void setCategoryId(UUID categoryId) {
-        this.categoryId = categoryId;
-    }
-
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
-
-    public UUID getShopId() {
-        return shopId;
-    }
-
-    public void setShopId(UUID shopId) {
-        this.shopId = shopId;
-    }
-}
+        @NotNull(message = "Shop id is required")
+        UUID shopId
+) {}

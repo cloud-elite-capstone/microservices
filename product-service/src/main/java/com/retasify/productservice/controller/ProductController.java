@@ -1,11 +1,14 @@
 package com.retasify.productservice.controller;
 
 import com.retasify.productservice.dto.ProductDto;
+import com.retasify.productservice.dto.ProductSearchRequest;
 import com.retasify.productservice.service.ProductService;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
+
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,27 +39,22 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<ProductDto> createProduct(@RequestBody ProductDto productDto) {
+    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody ProductDto productDto) {
         ProductDto created = productService.createProduct(productDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    // TODO:
+    //  1. Minmax Budget
+    //  2. Minmax Rating
+    //  3. Source (Shop)
     @PostMapping(value = "/search", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> searchProducts(@RequestParam(required = false) String search,
-                                                             @RequestParam(required = false) String location,
-                                                             @RequestParam(required = false) java.math.BigDecimal budget,
-                                                             @RequestParam(required = false) MultipartFile image,
-                                                             @RequestParam(required = false) String imageUrl) throws IOException {
-        String effectiveImage = imageUrl;
-        if (image != null && !image.isEmpty()) {
-            String contentType = image.getContentType() == null ? "image/jpeg" : image.getContentType();
-            effectiveImage = "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(image.getBytes());
-        }
-        return ResponseEntity.ok(productService.searchProduct(search, location, budget, effectiveImage));
+    public ResponseEntity<Map<String, Object>> searchProducts(@Valid ProductSearchRequest request) throws IOException {
+        return ResponseEntity.ok(productService.searchProduct(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductDto> updateProduct(@PathVariable UUID id, @RequestBody ProductDto productDto) {
+    public ResponseEntity<ProductDto> updateProduct(@PathVariable UUID id, @Valid @RequestBody ProductDto productDto) {
         return ResponseEntity.ok(productService.updateProduct(id, productDto));
     }
 

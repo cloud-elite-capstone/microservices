@@ -2,47 +2,59 @@ package com.retasify.productservice.dto;
 
 import java.math.BigDecimal;
 import java.util.UUID;
-import org.locationtech.jts.geom.Point;
 
-public class ProductSearchRequest {
+import jakarta.validation.constraints.*;
+import org.springframework.web.multipart.MultipartFile;
 
-    private String search;
-    private String location;
-    private BigDecimal budget;
-    private String image;
+public record ProductSearchRequest(
+        @Size(max = 100, message = "Search term must not exceed 100 characters")
+        String search,
 
-    public ProductSearchRequest() {
+        @Size(max = 100, message = "Location must not exceed 100 characters")
+        String location,
+
+        @PositiveOrZero(message = "Minimum budget must be zero or positive")
+        BigDecimal minBudget,
+
+        @PositiveOrZero(message = "Maximum budget must be zero or positive")
+        BigDecimal maxBudget,
+
+        @DecimalMin(value = "0.0", message = "Minimum rating cannot be less than 0.0")
+        @DecimalMax(value = "5.0", message = "Minimum rating cannot exceed 5.0")
+        Double minRating,
+
+        @DecimalMin(value = "0.0", message = "Maximum rating cannot be less than 0.0")
+        @DecimalMax(value = "5.0", message = "Maximum rating cannot exceed 5.0")
+        Double maxRating,
+
+        UUID sourceShop,
+
+        MultipartFile image,
+
+        @Size(max = 2048, message = "Image URL is too long")
+        String imageUrl
+) {
+    @AssertTrue(message = "minBudget must be less than or equal to maxBudget")
+    public boolean isBudgetRangeValid() {
+        if (minBudget == null || maxBudget == null) {
+            return true;
+        }
+        return minBudget.compareTo(maxBudget) <= 0;
     }
 
-    public String getSearch() {
-        return search;
+    @AssertTrue(message = "minRating must be less than or equal to maxRating")
+    public boolean isRatingRangeValid() {
+        if (minRating == null || maxRating == null) {
+            return true;
+        }
+        return minRating <= maxRating;
     }
 
-    public void setSearch(String search) {
-        this.search = search;
-    }
+    @AssertTrue(message = "Cannot provide both an image file and an image URL")
+    public boolean isImageSourceValid() {
+        boolean hasFile = image != null && !image.isEmpty();
+        boolean hasUrl = imageUrl != null && !imageUrl.isBlank();
 
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public BigDecimal getBudget() {
-        return budget;
-    }
-
-    public void setBudget(BigDecimal budget) {
-        this.budget = budget;
-    }
-
-    public String getImage() {
-        return image;
-    }
-
-    public void setImage(String image) {
-        this.image = image;
+        return !(hasFile && hasUrl);
     }
 }

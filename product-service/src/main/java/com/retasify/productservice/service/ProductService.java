@@ -2,14 +2,20 @@ package com.retasify.productservice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.retasify.productservice.client.AgentClient;
+import com.retasify.productservice.client.GeocoderClient;
+import com.retasify.productservice.client.SerpApiClient;
 import com.retasify.productservice.dto.ProductDto;
 import com.retasify.productservice.dto.ProductSearchRequest;
 import com.retasify.productservice.exception.CategoryNotFoundException;
 import com.retasify.productservice.exception.ProductNotFoundException;
+import com.retasify.productservice.mapper.ProductMapper;
 import com.retasify.productservice.model.Category;
 import com.retasify.productservice.model.Product;
 import com.retasify.productservice.repository.CategoryRepository;
 import com.retasify.productservice.repository.ProductRepository;
+
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -19,15 +25,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import jakarta.annotation.Nonnull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
@@ -37,79 +45,72 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final WebClient webClient;
-    private final ObjectMapper objectMapper;
-
-    @Value("${serpapi.api.key:}")
-    private String serpApiKey;
-
-    @Value("${geocoding.api.key:}")
-    private String geocodingApiKey;
-
-    @Value("${agent.service.url:http://localhost:8085}")
-    private String agentServiceUrl;
+    private final SerpApiClient serpApiClient;
+    private final GeocoderClient geocoderClient;
+    private final AgentClient agentClient;
+    private final ProductMapper productMapper;
 
     public ProductService(ProductRepository productRepository,
                           CategoryRepository categoryRepository,
-                          WebClient.Builder webClientBuilder,
-                          ObjectMapper objectMapper) {
+                          SerpApiClient serpApiClient,
+                          GeocoderClient geocoderClient,
+                          AgentClient agentClient,
+                          ProductMapper productMapper
+    ) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
-        this.webClient = webClientBuilder.build();
-        this.objectMapper = objectMapper;
+        this.serpApiClient = serpApiClient;
+        this.geocoderClient = geocoderClient;
+        this.agentClient = agentClient;
+        this.productMapper = productMapper;
+    }
+
+    private Product findProductByIdOrThrow(UUID id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+    }
+
+    private Category findCategoryByIdOrThrow(UUID id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new CategoryNotFoundException(id));
     }
 
     @Transactional(readOnly = true)
     public ProductDto getProductById(UUID id) {
-        Product product = productRepository.findById(id)
-            .orElseThrow(() -> new ProductNotFoundException(id));
-        return ProductDto.fromEntity(product);
+        Product product = findProductByIdOrThrow(id);
+        return productMapper.toDto(product);
     }
 
     @Transactional
     public ProductDto createProduct(ProductDto productDto) {
-        validateRequest(productDto);
-        Category category = categoryRepository.findById(productDto.getCategoryId())
-            .orElseThrow(() -> new CategoryNotFoundException(productDto.getCategoryId()));
-        Product product = productDto.toEntity();
-        product.setCategoryId(category.getId());
+        findCategoryByIdOrThrow(productDto.categoryId());
+
+        Product product = productMapper.toEntity(productDto);
+
         Product saved = productRepository.save(product);
-        return ProductDto.fromEntity(saved);
+        return productMapper.toDto(saved);
     }
 
     @Transactional
     public ProductDto updateProduct(UUID id, ProductDto productDto) {
-        validateRequest(productDto);
-        Product product = productRepository.findById(id)
-            .orElseThrow(() -> new ProductNotFoundException(id));
-        categoryRepository.findById(productDto.getCategoryId())
-            .orElseThrow(() -> new CategoryNotFoundException(productDto.getCategoryId()));
-        product.setName(productDto.getName());
-        product.setDescription(productDto.getDescription());
-        product.setPrice(productDto.getPrice());
-        product.setQuantity(productDto.getQuantity());
-        product.setLocation(productDto.getLocation());
-        product.setCategoryId(productDto.getCategoryId());
-        product.setImageUrl(productDto.getImageUrl());
-        product.setShopId(productDto.getShopId());
+        Product product = findProductByIdOrThrow(id);
+        findCategoryByIdOrThrow(productDto.categoryId());
+
+        productMapper.updateEntityFromDto(productDto, product);
+
         Product updated = productRepository.save(product);
-        return ProductDto.fromEntity(updated);
+        return productMapper.toDto(updated);
     }
 
     @Transactional
     public void deleteProduct(UUID id) {
-        if (!productRepository.existsById(id)) {
-            throw new ProductNotFoundException(id);
-        }
+        findProductByIdOrThrow(id);
         productRepository.deleteById(id);
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> searchProducts(ProductSearchRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("Search request is required");
-        }
-        return searchProduct(request.getSearch(), request.getLocation(), request.getBudget(), request.getImage());
+    public Map<String, Object> searchProducts(@Nonnull ProductSearchRequest request) {
+        return searchProduct(request.search(), request.location(), request.budget(), request.image());
     }
 
     @Transactional(readOnly = true)
@@ -143,11 +144,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> searchProducts(Map<String, Object> requestBody) {
-        if (requestBody == null) {
-            throw new IllegalArgumentException("Request body is required");
-        }
-
+    public Map<String, Object> searchProducts(@Nonnull Map<String, Object> requestBody) {
         Object keywordsObj = requestBody.get("search_keywords");
         List<String> keywords = new ArrayList<>();
         if (keywordsObj instanceof List<?> list) {
@@ -195,58 +192,6 @@ public class ProductService {
             .collect(Collectors.toList());
     }
 
-    private List<Product> searchSerpApiProducts(String keyword) {
-        if (serpApiKey == null || serpApiKey.isBlank()) {
-            return List.of();
-        }
-
-        try {
-            JsonNode root = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                    .scheme("https")
-                    .host("serpapi.com")
-                    .path("/search.json")
-                    .queryParam("engine", "google_product")
-                    .queryParam("q", keyword)
-                    .queryParam("api_key", serpApiKey)
-                    .build())
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
-
-            if (root == null) {
-                return List.of();
-            }
-
-            JsonNode results = root.path("shopping_results");
-            if (results.isMissingNode() || !results.isArray()) {
-                results = root.path("organic_results");
-            }
-            if (results.isMissingNode() || !results.isArray()) {
-                return List.of();
-            }
-
-            List<Product> converted = new ArrayList<>();
-            for (JsonNode item : results) {
-                Product product = new Product();
-                product.setId(UUID.randomUUID());
-                product.setName(item.path("title").asText(item.path("name").asText(null)));
-                product.setDescription(item.path("snippet").asText(null));
-                product.setPrice(parseBigDecimal(item.path("price").asText(null)));
-                product.setQuantity(0);
-                product.setLocation(null);
-                product.setCategoryId(null);
-                product.setImageUrl(item.path("thumbnail").asText(item.path("image").asText(null)));
-                product.setShopId(null);
-                converted.add(product);
-            }
-            return converted;
-        } catch (Exception ex) {
-            return List.of();
-        }
-    }
-
     private Map<String, Object> buildAgentPayload(String search, Polygon polygon, BigDecimal budget, String image) {
         Map<String, Object> payload = new LinkedHashMap<>();
         List<Map<String, Object>> searchFor = new ArrayList<>();
@@ -264,25 +209,6 @@ public class ProductService {
         searchFor.add(searchItem);
         payload.put("search_for", searchFor);
         return payload;
-    }
-
-    private Map<String, Object> callAgentRecommendations(Map<String, Object> payload) {
-        try {
-            JsonNode root = webClient.post()
-                .uri(agentServiceUrl + "/agent/recommendations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
-
-            if (root == null) {
-                return Map.of();
-            }
-            return objectMapper.convertValue(root, Map.class);
-        } catch (Exception ex) {
-            return Map.of();
-        }
     }
 
     private Map<String, Object> normalizeAgentResponse(Map<String, Object> agentResponse, String search, List<Product> initialProducts) {
@@ -350,53 +276,6 @@ public class ProductService {
                 map -> new ArrayList<>(map.values())));
     }
 
-    private Polygon geocodeLocationToBoundingBoxPolygon(String location) {
-        try {
-            JsonNode root = webClient.get()
-                .uri(uriBuilder -> {
-                    String encoded = java.net.URLEncoder.encode(location, java.nio.charset.StandardCharsets.UTF_8);
-                    return uriBuilder
-                        .scheme("https")
-                        .host("nominatim.openstreetmap.org")
-                        .path("/search")
-                        .queryParam("q", location)
-                        .queryParam("format", "jsonv2")
-                        .queryParam("limit", "1")
-                        .build();
-                })
-                .header("User-Agent", "retasify-product-service")
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
-
-            if (root == null || !root.isArray() || root.size() == 0) {
-                return null;
-            }
-            JsonNode first = root.get(0);
-            JsonNode bboxNode = first.path("boundingbox");
-            if (bboxNode.isMissingNode() || !bboxNode.isArray() || bboxNode.size() < 4) {
-                return null;
-            }
-
-            double south = bboxNode.get(0).asDouble();
-            double north = bboxNode.get(1).asDouble();
-            double west = bboxNode.get(2).asDouble();
-            double east = bboxNode.get(3).asDouble();
-            Coordinate[] coordinates = new Coordinate[] {
-                new Coordinate(west, south),
-                new Coordinate(east, south),
-                new Coordinate(east, north),
-                new Coordinate(west, north),
-                new Coordinate(west, south)
-            };
-            LinearRing ring = GEOMETRY_FACTORY.createLinearRing(coordinates);
-            return GEOMETRY_FACTORY.createPolygon(ring);
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
     private Map<String, Object> toGeoJsonPolygon(Polygon polygon) {
         if (polygon == null) {
             return Map.of();
@@ -446,33 +325,23 @@ public class ProductService {
             || (product.getDescription() != null && product.getDescription().toLowerCase().contains(value));
     }
 
-    private BigDecimal parseBigDecimal(String value) {
-        if (value == null || value.isBlank()) {
-            return BigDecimal.ZERO;
+    private String resolveImageSource(ProductSearchRequest request) {
+        String imageUrl = request.imageUrl();
+        if (imageUrl != null && !imageUrl.isBlank()) {
+            return imageUrl;
         }
-        try {
-            String normalized = value.replace("$", "").replace(",", "").trim();
-            return new BigDecimal(normalized);
-        } catch (Exception ex) {
-            return BigDecimal.ZERO;
-        }
-    }
 
-    private void validateRequest(ProductDto productDto) {
-        if (productDto == null) {
-            throw new IllegalArgumentException("Product payload is required");
+        MultipartFile image = request.image();
+        if (image != null && !image.isEmpty()) {
+            try {
+                String contentType = image.getContentType() != null ? image.getContentType() : MediaType.IMAGE_JPEG_VALUE;
+                String base64Data = Base64.getEncoder().encodeToString(image.getBytes());
+                return "data:" + contentType + ";base64," + base64Data;
+            } catch (IOException e) {
+                throw new ImageProcessingException("Failed to process uploaded image", e);
+            }
         }
-        if (productDto.getName() == null || productDto.getName().isBlank()) {
-            throw new IllegalArgumentException("Product name is required");
-        }
-        if (productDto.getPrice() == null) {
-            throw new IllegalArgumentException("Product price is required");
-        }
-        if (productDto.getCategoryId() == null) {
-            throw new IllegalArgumentException("Category id is required");
-        }
-        if (productDto.getShopId() == null) {
-            throw new IllegalArgumentException("Shop id is required");
-        }
+
+        return null;
     }
 }
