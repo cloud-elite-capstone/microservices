@@ -1,4 +1,4 @@
-package com.cartesian.productservice.dto;
+package com.cartesian.productservice.client.dto.agent;
 
 import java.math.BigDecimal;
 import java.util.UUID;

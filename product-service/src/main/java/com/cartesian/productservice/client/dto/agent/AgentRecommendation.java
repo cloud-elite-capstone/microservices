@@ -1,4 +1,4 @@
-package com.cartesian.productservice.dto;
+package com.cartesian.productservice.client.dto.agent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;

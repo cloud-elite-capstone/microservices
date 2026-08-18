@@ -1,28 +1,14 @@
 package com.cartesian.productservice.client;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.bind.annotation.RequestBody;
 
-import com.cartesian.productservice.dto.AgentSearchRequest;
-import com.cartesian.productservice.dto.AgentSearchResponse;
+import com.cartesian.productservice.client.dto.agent.AgentSearchRequest;
+import com.cartesian.productservice.client.dto.agent.AgentSearchResponse;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
 
-@Component
-public class AgentClient {
-    private final RestClient restClient;
-
-    public AgentClient(RestClient.Builder builder,
-                       @Value("${agent.service.url:http://localhost:8085}") String baseUrl) {
-        this.restClient = builder.baseUrl(baseUrl).build();
-    }
-
-    public AgentSearchResponse recommend(AgentSearchRequest request) {
-        return restClient.post()
-                .uri("/agent/recommendations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(AgentSearchResponse.class);
-    }
+@HttpExchange(accept = "application/json", contentType = "application/json")
+public interface AgentClient {
+    @PostExchange("/agent/recommendations")
+    AgentSearchResponse recommend(@RequestBody AgentSearchRequest request);
 }

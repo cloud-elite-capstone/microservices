@@ -6,7 +6,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.NullValueMappingStrategy;
 
-import com.cartesian.productservice.dto.AgentRecommendation;
+import com.cartesian.productservice.client.dto.agent.AgentRecommendation;
 import com.cartesian.productservice.dto.Recommendation;
 
 @Mapper(

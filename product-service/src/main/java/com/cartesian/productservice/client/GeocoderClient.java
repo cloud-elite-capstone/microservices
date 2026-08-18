@@ -1,65 +1,28 @@
 package com.cartesian.productservice.client;
 
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.Polygon;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.service.annotation.HttpExchange;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 
-@Component
-public class GeocoderClient {
-    private final RestClient restClient;
-    private final GeometryFactory geometryFactory;
+@HttpExchange(accept = "application/json", headers = "User-Agent=cartesian-product-service")
+public interface GeocoderClient {
+    @GetExchange("/search")
+    List<GeocodeResult> search(
+            @RequestParam("q") String location,
+            @RequestParam(name = "format", defaultValue = "jsonv2") String format,
+            @RequestParam(name = "limit", defaultValue = "1") int limit
+    );
 
-    public GeocoderClient(
-        RestClient.Builder builder,
-        @Value("${geocoder.service.url:https://nominatim.openstreetmap.org}") String baseUrl,
-        GeometryFactory geometryFactory
-    ) {
-        this.restClient = builder.baseUrl(baseUrl).build();
-        this.geometryFactory = geometryFactory;
+    default List<GeocodeResult> search(String location) {
+        return search(location, "jsonv2", 1);
     }
 
-    public Polygon geocodeToBoundingBoxPolygon(String location) {
-        JsonNode root = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/search")
-                        .queryParam("q", location)
-                        .queryParam("format", "jsonv2")
-                        .queryParam("limit", "1")
-                        .build())
-                .header("User-Agent", "retasify-product-service")
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .body(JsonNode.class);
-
-        if (root == null || !root.isArray() || root.isEmpty()) {
-            return null;
-        }
-
-        JsonNode bbox = root.get(0).path("boundingbox");
-        if (bbox.isMissingNode() || !bbox.isArray() || bbox.size() < 4) {
-            return null;
-        }
-
-        double south = bbox.get(0).asDouble();
-        double north = bbox.get(1).asDouble();
-        double west = bbox.get(2).asDouble();
-        double east = bbox.get(3).asDouble();
-
-        Coordinate[] coordinates = new Coordinate[] {
-                new Coordinate(west, south),
-                new Coordinate(east, south),
-                new Coordinate(east, north),
-                new Coordinate(west, north),
-                new Coordinate(west, south)
-        };
-        LinearRing ring = geometryFactory.createLinearRing(coordinates);
-        return geometryFactory.createPolygon(ring);
-    }
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeocodeResult(
+            @JsonProperty("boundingbox") List<Double> boundingBox
+    ) {}
 }

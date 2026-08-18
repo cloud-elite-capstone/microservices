@@ -1,4 +1,4 @@
-package com.cartesian.productservice.dto;
+package com.cartesian.productservice.client.dto.agent;
 
 import java.util.List;
 

@@ -1,5 +1,6 @@
 package com.cartesian.productservice.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -37,15 +38,15 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
+    @PostMapping(value = "/search")
+    public ResponseEntity<List<ProductResponse>> searchLocalProducts(@RequestBody String query) {
+        return ResponseEntity.ok(productService.searchLocalProducts(query));
+    }
+
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse created = productService.createProduct(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
-    }
-
-    @PostMapping(value = "/search", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProductSearchResponse> searchProducts(@Valid ProductSearchRequest request) {
-        return ResponseEntity.ok(productService.searchProducts(request));
     }
 
     @PutMapping("/{id}")
