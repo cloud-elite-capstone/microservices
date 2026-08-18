@@ -1,13 +1,12 @@
 package com.retasify.productservice.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.Map;
+import com.retasify.productservice.dto.AgentSearchRequest;
+import com.retasify.productservice.dto.AgentSearchResponse;
 
 @Component
 public class AgentClient {
@@ -18,12 +17,12 @@ public class AgentClient {
         this.restClient = builder.baseUrl(baseUrl).build();
     }
 
-    public Map<String, Object> recommend(Map<String, Object> payload) {
+    public AgentSearchResponse recommend(AgentSearchRequest request) {
         return restClient.post()
                 .uri("/agent/recommendations")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(payload)
+                .body(request)
                 .retrieve()
-                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                .body(AgentSearchResponse.class);
     }
 }

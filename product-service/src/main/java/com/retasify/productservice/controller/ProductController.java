@@ -1,14 +1,7 @@
 package com.retasify.productservice.controller;
 
-import com.retasify.productservice.dto.ProductDto;
-import com.retasify.productservice.dto.ProductSearchRequest;
-import com.retasify.productservice.service.ProductService;
-import java.io.IOException;
-import java.util.Base64;
-import java.util.Map;
 import java.util.UUID;
 
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +12,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+
+import com.retasify.productservice.dto.ProductRequest;
+import com.retasify.productservice.dto.ProductResponse;
+import com.retasify.productservice.dto.ProductSearchRequest;
+import com.retasify.productservice.dto.ProductSearchResponse;
+import com.retasify.productservice.service.ProductService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/products")
@@ -34,28 +33,24 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductDto> getProductById(@PathVariable UUID id) {
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable UUID id) {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
     @PostMapping
-    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody ProductDto productDto) {
-        ProductDto created = productService.createProduct(productDto);
+    public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
+        ProductResponse created = productService.createProduct(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // TODO:
-    //  1. Minmax Budget
-    //  2. Minmax Rating
-    //  3. Source (Shop)
     @PostMapping(value = "/search", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> searchProducts(@Valid ProductSearchRequest request) throws IOException {
-        return ResponseEntity.ok(productService.searchProduct(request));
+    public ResponseEntity<ProductSearchResponse> searchProducts(@Valid ProductSearchRequest request) {
+        return ResponseEntity.ok(productService.searchProducts(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductDto> updateProduct(@PathVariable UUID id, @Valid @RequestBody ProductDto productDto) {
-        return ResponseEntity.ok(productService.updateProduct(id, productDto));
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
+        return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
     @DeleteMapping("/{id}")

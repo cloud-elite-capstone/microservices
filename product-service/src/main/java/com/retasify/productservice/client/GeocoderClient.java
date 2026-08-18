@@ -1,22 +1,28 @@
 package com.retasify.productservice.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 @Component
 public class GeocoderClient {
-    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
-
     private final RestClient restClient;
+    private final GeometryFactory geometryFactory;
 
-    public GeocoderClient(RestClient.Builder builder) {
-        this.restClient = builder.baseUrl("https://nominatim.openstreetmap.org").build();
+    public GeocoderClient(
+        RestClient.Builder builder,
+        @Value("${geocoder.service.url:https://nominatim.openstreetmap.org}") String baseUrl,
+        GeometryFactory geometryFactory
+    ) {
+        this.restClient = builder.baseUrl(baseUrl).build();
+        this.geometryFactory = geometryFactory;
     }
 
     public Polygon geocodeToBoundingBoxPolygon(String location) {
@@ -53,7 +59,7 @@ public class GeocoderClient {
                 new Coordinate(west, north),
                 new Coordinate(west, south)
         };
-        LinearRing ring = GEOMETRY_FACTORY.createLinearRing(coordinates);
-        return GEOMETRY_FACTORY.createPolygon(ring);
+        LinearRing ring = geometryFactory.createLinearRing(coordinates);
+        return geometryFactory.createPolygon(ring);
     }
 }

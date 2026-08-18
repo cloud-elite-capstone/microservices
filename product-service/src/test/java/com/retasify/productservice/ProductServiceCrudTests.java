@@ -4,18 +4,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.retasify.productservice.dto.ProductDto;
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.retasify.productservice.dto.ProductRequest;
+import com.retasify.productservice.dto.ProductResponse;
 import com.retasify.productservice.exception.ProductNotFoundException;
 import com.retasify.productservice.model.Category;
 import com.retasify.productservice.repository.CategoryRepository;
 import com.retasify.productservice.repository.ProductRepository;
 import com.retasify.productservice.service.ProductService;
-import java.math.BigDecimal;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 class ProductServiceCrudTests {
@@ -38,37 +41,44 @@ class ProductServiceCrudTests {
     @Test
     void productCrudFlow() {
         Category category = categoryRepository.save(new Category("Fruit", "Fresh fruit"));
+        UUID shopId = UUID.randomUUID();
 
-        ProductDto request = new ProductDto();
-        request.setName("Apple");
-        request.setDescription("Crisp and sweet");
-        request.setPrice(new BigDecimal("4.99"));
-        request.setQuantity(12);
-        request.setCategoryId(category.getId());
-        request.setShopId(UUID.randomUUID());
-        request.setImageUrl("https://example.com/apple.jpg");
+        ProductRequest request = new ProductRequest(
+                "Apple",
+                "Crisp and sweet",
+                new BigDecimal("4.99"),
+                null,
+                12,
+                null,
+                category.getId(),
+                "https://example.com/apple.jpg",
+                shopId
+        );
 
-        ProductDto created = productService.createProduct(request);
-        assertNotNull(created.getId());
-        assertEquals("Apple", created.getName());
+        ProductResponse created = productService.createProduct(request);
+        assertNotNull(created.id());
+        assertEquals("Apple", created.name());
 
-        ProductDto fetched = productService.getProductById(created.getId());
-        assertEquals("Crisp and sweet", fetched.getDescription());
+        ProductResponse fetched = productService.getProductById(created.id());
+        assertEquals("Crisp and sweet", fetched.description());
 
-        ProductDto update = new ProductDto();
-        update.setName("Green Apple");
-        update.setDescription("Organic and crisp");
-        update.setPrice(new BigDecimal("5.49"));
-        update.setQuantity(8);
-        update.setCategoryId(category.getId());
-        update.setShopId(request.getShopId());
-        update.setImageUrl("https://example.com/green-apple.jpg");
+        ProductRequest update = new ProductRequest(
+                "Green Apple",
+                "Organic and crisp",
+                new BigDecimal("5.49"),
+                null,
+                8,
+                null,
+                category.getId(),
+                "https://example.com/green-apple.jpg",
+                shopId
+        );
 
-        ProductDto updated = productService.updateProduct(created.getId(), update);
-        assertEquals("Green Apple", updated.getName());
-        assertEquals(8, updated.getQuantity());
+        ProductResponse updated = productService.updateProduct(created.id(), update);
+        assertEquals("Green Apple", updated.name());
+        assertEquals(8, updated.quantity());
 
-        productService.deleteProduct(updated.getId());
-        assertThrows(ProductNotFoundException.class, () -> productService.getProductById(updated.getId()));
+        productService.deleteProduct(updated.id());
+        assertThrows(ProductNotFoundException.class, () -> productService.getProductById(updated.id()));
     }
 }

@@ -1,18 +1,24 @@
 package com.retasify.productservice.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.retasify.productservice.model.Product;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.retasify.productservice.model.Product;
+
 @Component
 public class SerpApiClient {
+    private static final Logger log = LoggerFactory.getLogger(SerpApiClient.class);
+
     private final RestClient restClient;
     private final String apiKey;
 
@@ -23,6 +29,7 @@ public class SerpApiClient {
     }
 
     public List<Product> search(String keyword) {
+        // TODO: should throw exception
         if (apiKey == null || apiKey.isBlank()) {
             return List.of();
         }

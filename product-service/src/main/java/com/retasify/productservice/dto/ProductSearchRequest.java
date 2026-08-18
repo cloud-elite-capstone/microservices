@@ -3,8 +3,13 @@ package com.retasify.productservice.dto;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import jakarta.validation.constraints.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 public record ProductSearchRequest(
         @Size(max = 100, message = "Search term must not exceed 100 characters")
