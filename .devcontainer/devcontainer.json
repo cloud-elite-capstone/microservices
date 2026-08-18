@@ -1,5 +1,5 @@
 {
-  "name": "cartesian Microservices",
+  "name": "Cartesian Microservices",
   "image": "mcr.microsoft.com/devcontainers/base:trixie",
 
   "features": {
@@ -10,7 +10,7 @@
     }
   },
 
-  "forwardPorts": [8081, 8082, 8083, 8084],
+  "forwardPorts": [8081, 8082, 8083, 8084, 8085],
 
   "customizations": {
     "vscode": {
