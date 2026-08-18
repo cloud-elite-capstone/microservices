@@ -1,7 +1,24 @@
 package com.cartesian.productservice.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.Polygon;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+
 import com.cartesian.productservice.dto.ProductDto;
 import com.cartesian.productservice.dto.ProductSearchRequest;
 import com.cartesian.productservice.exception.CategoryNotFoundException;
@@ -10,25 +27,8 @@ import com.cartesian.productservice.model.Category;
 import com.cartesian.productservice.model.Product;
 import com.cartesian.productservice.repository.CategoryRepository;
 import com.cartesian.productservice.repository.ProductRepository;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.Polygon;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class ProductService {
@@ -50,9 +50,9 @@ public class ProductService {
     private String agentServiceUrl;
 
     public ProductService(ProductRepository productRepository,
-                          CategoryRepository categoryRepository,
-                          WebClient.Builder webClientBuilder,
-                          ObjectMapper objectMapper) {
+            CategoryRepository categoryRepository,
+            WebClient.Builder webClientBuilder,
+            ObjectMapper objectMapper) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.webClient = webClientBuilder.build();
@@ -62,7 +62,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductDto getProductById(UUID id) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new ProductNotFoundException(id));
+                .orElseThrow(() -> new ProductNotFoundException(id));
         return ProductDto.fromEntity(product);
     }
 
@@ -70,7 +70,7 @@ public class ProductService {
     public ProductDto createProduct(ProductDto productDto) {
         validateRequest(productDto);
         Category category = categoryRepository.findById(productDto.getCategoryId())
-            .orElseThrow(() -> new CategoryNotFoundException(productDto.getCategoryId()));
+                .orElseThrow(() -> new CategoryNotFoundException(productDto.getCategoryId()));
         Product product = productDto.toEntity();
         product.setCategoryId(category.getId());
         Product saved = productRepository.save(product);
@@ -81,9 +81,9 @@ public class ProductService {
     public ProductDto updateProduct(UUID id, ProductDto productDto) {
         validateRequest(productDto);
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new ProductNotFoundException(id));
+                .orElseThrow(() -> new ProductNotFoundException(id));
         categoryRepository.findById(productDto.getCategoryId())
-            .orElseThrow(() -> new CategoryNotFoundException(productDto.getCategoryId()));
+                .orElseThrow(() -> new CategoryNotFoundException(productDto.getCategoryId()));
         product.setName(productDto.getName());
         product.setDescription(productDto.getDescription());
         product.setPrice(productDto.getPrice());
@@ -134,7 +134,7 @@ public class ProductService {
             } else if (location instanceof Map<?, ?> map) {
                 polygon = toPolygon(map);
             }
-            Map<String, Object> agentPayload = buildAgentPayload(search, polygon, budget, image);
+            Map<String, Object> agentPayload = buildAgentPayload(search, polygon, budget, image, deduplicateProducts(initialProducts));
             Map<String, Object> agentResponse = callAgentRecommendations(agentPayload);
             return normalizeAgentResponse(agentResponse, search, initialProducts);
         }
@@ -191,8 +191,8 @@ public class ProductService {
 
     private List<Product> searchDatabaseByKeyword(String keyword) {
         return productRepository.findAll().stream()
-            .filter(product -> productMatchesSearch(product, keyword))
-            .collect(Collectors.toList());
+                .filter(product -> productMatchesSearch(product, keyword))
+                .collect(Collectors.toList());
     }
 
     private List<Product> searchSerpApiProducts(String keyword) {
@@ -202,18 +202,18 @@ public class ProductService {
 
         try {
             JsonNode root = webClient.get()
-                .uri(uriBuilder -> uriBuilder
+                    .uri(uriBuilder -> uriBuilder
                     .scheme("https")
                     .host("serpapi.com")
                     .path("/search.json")
-                    .queryParam("engine", "google_product")
+                    .queryParam("engine", "google_shopping")
                     .queryParam("q", keyword)
                     .queryParam("api_key", serpApiKey)
                     .build())
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
 
             if (root == null) {
                 return List.of();
@@ -247,7 +247,7 @@ public class ProductService {
         }
     }
 
-    private Map<String, Object> buildAgentPayload(String search, Polygon polygon, BigDecimal budget, String image) {
+    private Map<String, Object> buildAgentPayload(String search, Polygon polygon, BigDecimal budget, String image, List<Product> candidates) {
         Map<String, Object> payload = new LinkedHashMap<>();
         List<Map<String, Object>> searchFor = new ArrayList<>();
         Map<String, Object> searchItem = new LinkedHashMap<>();
@@ -261,6 +261,12 @@ public class ProductService {
         if (image != null && !image.isBlank()) {
             searchItem.put("image_url", image);
         }
+        if (candidates != null && !candidates.isEmpty()) {
+            List<ProductDto> candidateDtos = candidates.stream()
+                    .map(ProductDto::fromEntity)
+                    .collect(Collectors.toList());
+            searchItem.put("candidates", candidateDtos);
+        }
         searchFor.add(searchItem);
         payload.put("search_for", searchFor);
         return payload;
@@ -269,12 +275,12 @@ public class ProductService {
     private Map<String, Object> callAgentRecommendations(Map<String, Object> payload) {
         try {
             JsonNode root = webClient.post()
-                .uri(agentServiceUrl + "/agent/recommendations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
+                    .uri(agentServiceUrl + "/agent/recommendations")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(payload)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
 
             if (root == null) {
                 return Map.of();
@@ -340,35 +346,35 @@ public class ProductService {
 
     private List<Product> deduplicateProducts(List<Product> products) {
         return products.stream()
-            .filter(Objects::nonNull)
-            .filter(product -> product.getName() != null && !product.getName().isBlank())
-            .collect(Collectors.collectingAndThen(
-                Collectors.toMap(
-                    product -> product.getName().toLowerCase(),
-                    product -> product,
-                    (left, right) -> left),
-                map -> new ArrayList<>(map.values())));
+                .filter(Objects::nonNull)
+                .filter(product -> product.getName() != null && !product.getName().isBlank())
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(
+                                product -> product.getName().toLowerCase(),
+                                product -> product,
+                                (left, right) -> left),
+                        map -> new ArrayList<>(map.values())));
     }
 
     private Polygon geocodeLocationToBoundingBoxPolygon(String location) {
         try {
             JsonNode root = webClient.get()
-                .uri(uriBuilder -> {
-                    String encoded = java.net.URLEncoder.encode(location, java.nio.charset.StandardCharsets.UTF_8);
-                    return uriBuilder
-                        .scheme("https")
-                        .host("nominatim.openstreetmap.org")
-                        .path("/search")
-                        .queryParam("q", location)
-                        .queryParam("format", "jsonv2")
-                        .queryParam("limit", "1")
-                        .build();
-                })
-                .header("User-Agent", "cartesian-product-service")
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
+                    .uri(uriBuilder -> {
+                        String encoded = java.net.URLEncoder.encode(location, java.nio.charset.StandardCharsets.UTF_8);
+                        return uriBuilder
+                                .scheme("https")
+                                .host("nominatim.openstreetmap.org")
+                                .path("/search")
+                                .queryParam("q", location)
+                                .queryParam("format", "jsonv2")
+                                .queryParam("limit", "1")
+                                .build();
+                    })
+                    .header("User-Agent", "cartesian-product-service")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
 
             if (root == null || !root.isArray() || root.size() == 0) {
                 return null;
@@ -383,7 +389,7 @@ public class ProductService {
             double north = bboxNode.get(1).asDouble();
             double west = bboxNode.get(2).asDouble();
             double east = bboxNode.get(3).asDouble();
-            Coordinate[] coordinates = new Coordinate[] {
+            Coordinate[] coordinates = new Coordinate[]{
                 new Coordinate(west, south),
                 new Coordinate(east, south),
                 new Coordinate(east, north),
@@ -443,7 +449,7 @@ public class ProductService {
     private boolean productMatchesSearch(Product product, String term) {
         String value = term.toLowerCase();
         return (product.getName() != null && product.getName().toLowerCase().contains(value))
-            || (product.getDescription() != null && product.getDescription().toLowerCase().contains(value));
+                || (product.getDescription() != null && product.getDescription().toLowerCase().contains(value));
     }
 
     private BigDecimal parseBigDecimal(String value) {
