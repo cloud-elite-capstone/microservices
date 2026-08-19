@@ -3,8 +3,8 @@ package com.cartesian.productservice.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.reactive.config.CorsRegistry;
-import org.springframework.web.reactive.config.WebFluxConfigurer;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class CorsConfig {
@@ -12,11 +12,11 @@ public class CorsConfig {
     private String orchestratorUrl;
 
     @Bean
-    public WebFluxConfigurer corsConfigurer() {
-        return new WebFluxConfigurer() {
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/v3/api-docs")
+                registry.addMapping("/v3/api-docs/**")
                         .allowedOrigins(orchestratorUrl)
                         .allowedMethods("GET", "OPTIONS")
                         .allowedHeaders("*")
@@ -25,3 +25,4 @@ public class CorsConfig {
         };
     }
 }
+
