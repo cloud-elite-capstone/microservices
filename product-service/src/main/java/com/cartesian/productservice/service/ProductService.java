@@ -3,6 +3,7 @@ package com.cartesian.productservice.service;
 import java.util.List;
 import java.util.UUID;
 
+import com.cartesian.productservice.dto.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,13 +42,13 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse getProductById(UUID id) {
+    public ProductDto getProductById(UUID id) {
         Product product = findProductByIdOrThrow(id);
         return productMapper.toResponse(product);
     }
 
     @Transactional
-    public ProductResponse createProduct(ProductRequest request) {
+    public ProductDto createProduct(ProductDto request) {
         findCategoryByIdOrThrow(request.categoryId());
 
         Product product = productMapper.toEntity(request);
@@ -57,7 +58,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse updateProduct(UUID id, ProductRequest request) {
+    public ProductDto updateProduct(UUID id, ProductDto request) {
         Product product = findProductByIdOrThrow(id);
         findCategoryByIdOrThrow(request.categoryId());
 
@@ -74,7 +75,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductResponse> searchLocalProducts(String query) {
+    public List<ProductDto> searchLocalProducts(String query) {
         return productRepository.searchByNameOrDescription(query).stream()
                 .map(productMapper::toResponse)
                 .toList();

@@ -7,13 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.cartesian.productservice.dto.ProductDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.cartesian.productservice.dto.ProductRequest;
-import com.cartesian.productservice.dto.ProductResponse;
 import com.cartesian.productservice.exception.ProductNotFoundException;
 import com.cartesian.productservice.model.Category;
 import com.cartesian.productservice.repository.CategoryRepository;
@@ -42,8 +41,10 @@ class ProductServiceCrudTests {
     void productCrudFlow() {
         Category category = categoryRepository.save(new Category("Fruit", "Fresh fruit"));
         UUID shopId = UUID.randomUUID();
+        UUID id = UUID.randomUUID();
 
-        ProductRequest request = new ProductRequest(
+        ProductDto request = new ProductDto(
+                id,
                 "Apple",
                 "Crisp and sweet",
                 new BigDecimal("4.99"),
@@ -55,14 +56,15 @@ class ProductServiceCrudTests {
                 shopId
         );
 
-        ProductResponse created = productService.createProduct(request);
+        ProductDto created = productService.createProduct(request);
         assertNotNull(created.id());
         assertEquals("Apple", created.name());
 
-        ProductResponse fetched = productService.getProductById(created.id());
+        ProductDto fetched = productService.getProductById(created.id());
         assertEquals("Crisp and sweet", fetched.description());
 
-        ProductRequest update = new ProductRequest(
+        ProductDto update = new ProductDto(
+                id,
                 "Green Apple",
                 "Organic and crisp",
                 new BigDecimal("5.49"),
@@ -74,7 +76,7 @@ class ProductServiceCrudTests {
                 shopId
         );
 
-        ProductResponse updated = productService.updateProduct(created.id(), update);
+        ProductDto updated = productService.updateProduct(created.id(), update);
         assertEquals("Green Apple", updated.name());
         assertEquals(8, updated.quantity());
 

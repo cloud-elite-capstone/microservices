@@ -1,5 +1,6 @@
 package com.cartesian.productservice.mapper;
 
+import com.cartesian.productservice.dto.ProductDto;
 import org.mapstruct.*;
 
 import com.cartesian.productservice.dto.ProductRequest;
@@ -10,11 +11,11 @@ import java.util.UUID;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING, imports = { UUID.class })
 public interface ProductMapper {
-    ProductResponse toResponse(Product product);
+    ProductDto toResponse(Product product);
 
     @Mapping(target = "id", ignore = true)
-    Product toEntity(ProductRequest request);
+    Product toEntity(ProductDto request);
 
     @Mapping(target = "id", ignore = true)
-    void updateEntityFromRequest(ProductRequest request, @MappingTarget Product product);
+    void updateEntityFromRequest(ProductDto request, @MappingTarget Product product);
 }
