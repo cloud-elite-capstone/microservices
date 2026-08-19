@@ -88,6 +88,11 @@
 			<version>3.0.3</version>
 			<scope>compile</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.google.auth</groupId>
+			<artifactId>google-auth-library-oauth2-http</artifactId>
+			<version>1.48.0</version>
+		</dependency>
 	</dependencies>
 
 	<repositories>

@@ -1,0 +1,15 @@
+steps:
+  - name: 'gcr.io/k8s-skaffold/pack'
+    args:
+      - 'build'
+      - '$LOCATION-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:latest'
+      - '--builder'
+      - 'gcr.io/buildpacks/builder:google-22'
+      - '--path'
+      - '${_SERVICE_NAME}'
+      - '--network'
+      - 'cloudbuild'
+      - '--publish'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

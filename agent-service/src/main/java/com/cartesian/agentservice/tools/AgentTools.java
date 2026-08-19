@@ -1,5 +1,7 @@
 package com.cartesian.agentservice.tools;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.cartesian.agentservice.config.IdTokenExchangeFilter;
 import com.cartesian.agentservice.context.ChatTurnContext;
 import com.cartesian.agentservice.dto.ProductDto;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,10 +32,16 @@ public class AgentTools {
             ObjectMapper objectMapper,
             ChatTurnContext turnContext,
             @Value("${product.service.url:http://localhost:8083}") String productServiceUrl) {
-        this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
         this.turnContext = turnContext;
         this.productServiceUrl = productServiceUrl;
+        try {
+            this.webClient = webClientBuilder
+                    .filter(new IdTokenExchangeFilter(productServiceUrl))
+                    .build();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to create ID token filter for product service", e);
+        }
     }
 
     @Tool(description = "Search for products by keyword. Optionally provide budget in PHP (e.g. 10000.0) and location. Returns a numbered list of matching products.")
