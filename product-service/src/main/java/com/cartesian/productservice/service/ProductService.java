@@ -20,33 +20,14 @@ import com.cartesian.productservice.repository.ProductRepository;
 public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-//    private final SerpApiClient serpApiClient;
-//    private final GeocoderService geocoderService;
-//    private final AgentClient agentClient;
     private final ProductMapper productMapper;
-//    private final RecommendationMapper recommendationMapper;
-//    private final SearchCriteriaMapper searchCriteriaMapper;
-//    private final ObjectMapper objectMapper;
 
     public ProductService(ProductRepository productRepository,
                           CategoryRepository categoryRepository,
-//                          SerpApiClient serpApiClient,
-//                          GeocoderService geocoderClient,
-//                          AgentClient agentClient,
-                          ProductMapper productMapper
-//                          RecommendationMapper recommendationMapper,
-//                          SearchCriteriaMapper searchCriteriaMapper,
-//                          ObjectMapper objectMapper
-    ) {
+                          ProductMapper productMapper) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
-//        this.serpApiClient = serpApiClient;
-//        this.geocoderService = geocoderClient;
-//        this.agentClient = agentClient;
         this.productMapper = productMapper;
-//        this.recommendationMapper = recommendationMapper;
-//        this.searchCriteriaMapper = searchCriteriaMapper;
-//        this.objectMapper = objectMapper;
     }
 
     private Product findProductByIdOrThrow(UUID id) {
@@ -92,151 +73,10 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ProductResponse> searchLocalProducts(String query) {
         return productRepository.searchByNameOrDescription(query).stream()
                 .map(productMapper::toResponse)
                 .toList();
     }
-
-//    public ProductSearchResponse searchProducts(@Nonnull ProductSearchRequest request) {
-//        SearchCriteria criteria = searchCriteriaMapper.toSearchCriteria(request);
-//        return search(criteria);
-//    }
-//
-//    public SearchResultsResponse searchProducts(@Nonnull SearchRecommendationsRequest request) {
-//        List<SearchKeywordResult> searchResults = new ArrayList<>();
-//        for (String keyword : request.searchKeywords()) {
-//            SearchCriteria criteria = searchCriteriaMapper.toSearchCriteria(keyword, request, objectMapper);
-//            ProductSearchResponse keywordResponse = search(criteria);
-//            String itemName = (keywordResponse.itemSearchKeyword() == null || keywordResponse.itemSearchKeyword().isBlank())
-//                    ? keyword
-//                    : keywordResponse.itemSearchKeyword();
-//            searchResults.add(new SearchKeywordResult(
-//                    itemName,
-//                    keywordResponse.recommendationCount(),
-//                    keywordResponse.recommendations()
-//            ));
-//        }
-//
-//        return new SearchResultsResponse(searchResults);
-//    }
-//
-//    private ProductSearchResponse search(SearchCriteria criteria) {
-//        String search = criteria.search();
-//
-//        List<Product> initialProducts = new ArrayList<>();
-//        if (StringUtils.hasText(search)) {
-//            // TODO: can make this filter already in the database
-//            initialProducts.addAll(productRepository.searchByNameOrDescription(search));
-//
-//            // TODO: can apply caching
-//            initialProducts.addAll(serpApiClient.search(search));
-//        }
-//
-//        List<Product> filteredProducts = filterProducts(initialProducts, criteria);
-//
-//        if (requiresAgent(criteria)) {
-//            Polygon polygon = resolveSearchPolygon(criteria);
-//            AgentSearchRequest agentRequest = buildAgentRequest(criteria, polygon);
-//            AgentSearchResponse agentResponse = agentClient.recommend(agentRequest);
-//            return normalizeAgentResponse(agentResponse, search, filteredProducts);
-//        }
-//
-//        return buildRecommendationResponse(search, deduplicateProducts(filteredProducts));
-//    }
-//
-//    private static boolean requiresAgent(SearchCriteria criteria) {
-//        return criteria.locationText() != null
-//                || criteria.locationPolygon() != null
-//                || criteria.minBudget() != null
-//                || criteria.maxBudget() != null
-//                || criteria.minRating() != null
-//                || criteria.maxRating() != null
-//                || criteria.sourceShop() != null
-//                || (criteria.imageUrl() != null && !criteria.imageUrl().isBlank());
-//    }
-//
-//    private Polygon resolveSearchPolygon(SearchCriteria criteria) {
-//        if (criteria.locationText() != null) {
-//            return geocoderService.geocodeToBoundingBoxPolygon(criteria.locationText());
-//        }
-//        return criteria.locationPolygon();
-//    }
-//
-//    private static AgentSearchRequest buildAgentRequest(SearchCriteria criteria, Polygon polygon) {
-//        String imageUrl = StringUtils.hasText(criteria.imageUrl()) ? criteria.imageUrl() : null;
-//        AgentSearchItem searchItem = new AgentSearchItem(
-//                criteria.search() == null ? "" : criteria.search(),
-//                polygon,
-//                criteria.maxBudget(),
-//                criteria.minBudget(),
-//                criteria.minRating(),
-//                criteria.maxRating(),
-//                criteria.sourceShop(),
-//                imageUrl
-//        );
-//        return new AgentSearchRequest(List.of(searchItem));
-//    }
-//
-//    private ProductSearchResponse normalizeAgentResponse(AgentSearchResponse agentResponse, String search, List<Product> initialProducts) {
-//        List<Recommendation> recommendations = Optional.ofNullable(agentResponse)
-//                .map(AgentSearchResponse::recommendations)
-//                .map(recommendationMapper::toResponseList)
-//                .orElseGet(ArrayList::new);
-//
-//        if (recommendations.isEmpty() && !initialProducts.isEmpty()) {
-//            recommendations.addAll(buildRecommendationsFromProducts(initialProducts, "Recommended from initial search results"));
-//        }
-//
-//        String keyword = search == null || search.isBlank() ? "" : search;
-//        return new ProductSearchResponse(keyword, recommendations.size(), recommendations);
-//    }
-//
-//    private ProductSearchResponse buildRecommendationResponse(String search, List<Product> products) {
-//        List<Recommendation> recommendations = buildRecommendationsFromProducts(products, "Result from local or external product search");
-//        String keyword = search == null || search.isBlank() ? "" : search;
-//        return new ProductSearchResponse(keyword, recommendations.size(), recommendations);
-//    }
-//
-//    private List<Recommendation> buildRecommendationsFromProducts(List<Product> products, String rationale) {
-//        List<Recommendation> recommendations = new ArrayList<>();
-//        for (Product product : products.stream().limit(5).toList()) {
-//            recommendations.add(new Recommendation(
-//                    product.getName(),
-//                    rationale,
-//                    product.getPrice() == null ? BigDecimal.ZERO : product.getPrice(),
-//                    objectMapper.valueToTree(productMapper.toResponse(product))
-//            ));
-//        }
-//        return recommendations;
-//    }
-//
-//    private static List<Product> deduplicateProducts(List<Product> products) {
-//        return products.stream()
-//            .filter(Objects::nonNull)
-//            .filter(product -> product.getName() != null && !product.getName().isBlank())
-//            .collect(Collectors.collectingAndThen(
-//                Collectors.toMap(
-//                    product -> product.getName().toLowerCase(),
-//                    product -> product,
-//                    (left, right) -> left),
-//                map -> new ArrayList<>(map.values())));
-//    }
-//
-//    private static List<Product> filterProducts(List<Product> products, SearchCriteria criteria) {
-//        return products.stream()
-//                .filter(Objects::nonNull)
-//                .filter(product -> criteria.minBudget() == null
-//                        || priceOrZero(product).compareTo(criteria.minBudget()) >= 0)
-//                .filter(product -> criteria.maxBudget() == null
-//                        || priceOrZero(product).compareTo(criteria.maxBudget()) <= 0)
-//                .filter(product -> criteria.sourceShop() == null
-//                        || criteria.sourceShop().equals(product.getShopId()))
-//                .toList();
-//    }
-//
-//    private static BigDecimal priceOrZero(Product product) {
-//        return product.getPrice() == null ? BigDecimal.ZERO : product.getPrice();
-//    }
 }
