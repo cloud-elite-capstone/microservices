@@ -1,14 +1,12 @@
 package com.cartesian.agentservice.controller;
 
-import com.cartesian.agentservice.dto.ChatRequest;
-import com.cartesian.agentservice.dto.ChatResponse;
-import com.cartesian.agentservice.dto.RecommendationRequest;
-import com.cartesian.agentservice.dto.RecommendationResponse;
+import com.cartesian.agentservice.dto.*;
 import com.cartesian.agentservice.service.AgentChatService;
 import com.cartesian.agentservice.service.AgentService;
-import java.util.Map;
+
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,14 +21,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/agent")
 public class AgentController {
-
     private final AgentService agentService;
+    private final AgentChatService agentChatService;
 
-    @Autowired(required = false)
-    private AgentChatService agentChatService;
-
-    public AgentController(AgentService agentService) {
+    public AgentController(
+            AgentService agentService,
+            Optional<AgentChatService> agentChatService
+    ) {
         this.agentService = agentService;
+        this.agentChatService = agentChatService.orElse(null);
     }
 
     @PostMapping("/recommendations")
@@ -39,28 +38,33 @@ public class AgentController {
     }
 
     @PostMapping("/chat")
-    public ResponseEntity<?> chat(@RequestBody ChatRequest request) {
+    public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest request) {
         if (agentChatService == null) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
+                .body(new ChatResponse(
+                    request.getSessionId(),
+                    "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured.",
+                    List.of()));
         }
         return ResponseEntity.ok(agentChatService.chat(request));
     }
 
     @GetMapping("/chat")
-    public ResponseEntity<?> listChatSessions(@RequestParam(required = false) UUID userId) {
+    public ResponseEntity<List<ConversationSummaryDto>> listChatSessions(@RequestParam(required = false) UUID userId) {
         if (agentChatService == null) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
+                    .body(List.of());
+//                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
         }
         return ResponseEntity.ok(agentChatService.getUserConversations(userId));
     }
 
     @GetMapping("/chat/{sessionId}")
-    public ResponseEntity<?> getChatHistory(@PathVariable UUID sessionId) {
+    public ResponseEntity<ConversationDto> getChatHistory(@PathVariable UUID sessionId) {
         if (agentChatService == null) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
+                    .body(new ConversationDto());
+//                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
         }
         return agentChatService.getConversation(sessionId)
                 .map(ResponseEntity::ok)
@@ -68,10 +72,10 @@ public class AgentController {
     }
 
     @DeleteMapping("/chat/{sessionId}")
-    public ResponseEntity<?> deleteChat(@PathVariable UUID sessionId) {
+    public ResponseEntity<Void> deleteChat(@PathVariable UUID sessionId) {
         if (agentChatService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+//                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
         }
         boolean deleted = agentChatService.deleteConversation(sessionId);
         if (deleted) {
