@@ -1,66 +1,23 @@
-package com.cartesian.productservice.model;
+package com.cartesian.agentservice.dto;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.locationtech.jts.geom.Point;
 
-@Entity
-@Table(name = "products")
-public class Product {
+public class ProductDto {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
-
-    @Column(name = "name", nullable = false)
     private String name;
-
-    @Column(name = "description", nullable = true)
     private String description;
-
-    @Column(name = "price", nullable = true)
     private BigDecimal price;
-
-    @Column(name = "shipping_fee", nullable = true)
     private BigDecimal shippingFee;
-
-    @Column(name = "quantity", nullable = true)
     private int quantity;
-
-    @Column(name = "location")
     private Point location;
-
-    @Column(name = "category_id", nullable = true)
     private UUID categoryId;
-
-    @Column(name = "image_url", nullable = true)
     private String imageUrl;
-
-    @Column(name = "shop_id", nullable = true)
     private UUID shopId;
 
-    public Product() {
-    }
-
-    public Product(UUID id, String name, String description, BigDecimal price, BigDecimal shippingFee, int quantity,
-                  Point location, UUID categoryId, String imageUrl, UUID shopId) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.shippingFee = shippingFee;
-        this.quantity = quantity;
-        this.location = location;
-        this.categoryId = categoryId;
-        this.imageUrl = imageUrl;
-        this.shopId = shopId;
+    public ProductDto() {
     }
 
     public UUID getId() {

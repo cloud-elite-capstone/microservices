@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.cartesian.productservice.dto.ProductRequest;
 import com.cartesian.productservice.dto.ProductResponse;
@@ -47,6 +49,20 @@ public class ProductController {
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse created = productService.createProduct(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping(value = "/search", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> searchProducts(@RequestParam(required = false) String search,
+                                                             @RequestParam(required = false) String location,
+                                                             @RequestParam(required = false) java.math.BigDecimal budget,
+                                                             @RequestParam(required = false) MultipartFile image,
+                                                             @RequestParam(required = false) String imageUrl) throws IOException {
+        String effectiveImage = imageUrl;
+        if (image != null && !image.isEmpty()) {
+            String contentType = image.getContentType() == null ? "image/jpeg" : image.getContentType();
+            effectiveImage = "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(image.getBytes());
+        }
+        return ResponseEntity.ok(productService.searchProduct(search, location, budget, effectiveImage));
     }
 
     @PutMapping("/{id}")

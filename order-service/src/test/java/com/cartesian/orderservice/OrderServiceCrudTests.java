@@ -11,7 +11,6 @@ import com.cartesian.orderservice.repository.OrderItemsRepository;
 import com.cartesian.orderservice.repository.OrderRepository;
 import com.cartesian.orderservice.repository.TransactionRepository;
 import com.cartesian.orderservice.service.OrderService;
-
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
