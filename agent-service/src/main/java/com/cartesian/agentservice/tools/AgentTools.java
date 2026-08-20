@@ -30,13 +30,14 @@ public class AgentTools {
     public AgentTools(WebClient.Builder webClientBuilder,
             ObjectMapper objectMapper,
             ChatTurnContext turnContext,
-            @Value("${orchestrator.url:http://localhost:8086}") String orchestratorUrl) {
+            @Value("${orchestrator.url:http://localhost:8086}") String orchestratorUrl,
+            @Value("${microservices.auth.id-token.enabled:false}") boolean idTokenEnabled) {
         this.objectMapper = objectMapper;
         this.turnContext = turnContext;
         this.orchestratorUrl = orchestratorUrl;
         try {
             this.webClient = webClientBuilder
-                    .filter(new IdTokenExchangeFilter(orchestratorUrl))
+                    .filter(new IdTokenExchangeFilter(orchestratorUrl, idTokenEnabled))
                     .build();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to create ID token filter for orchestrator service", e);
