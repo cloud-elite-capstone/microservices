@@ -1,5 +1,20 @@
 package com.cartesian.agent_orchestrator_service.service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
+import org.locationtech.jts.geom.Polygon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 import com.cartesian.agent_orchestrator_service.adapter.geo.GeoAdapter;
 import com.cartesian.agent_orchestrator_service.adapter.search.WebSearchAdapter;
 import com.cartesian.agent_orchestrator_service.client.AgentServiceClient;
@@ -8,21 +23,17 @@ import com.cartesian.agent_orchestrator_service.dto.agent.RecommendationRequest;
 import com.cartesian.agent_orchestrator_service.dto.agent.RecommendationResponse;
 import com.cartesian.agent_orchestrator_service.dto.agent.SearchItemCriteria;
 import com.cartesian.agent_orchestrator_service.dto.product.ProductDto;
-import com.cartesian.agent_orchestrator_service.dto.search.*;
+import com.cartesian.agent_orchestrator_service.dto.search.ProductSearchRequest;
+import com.cartesian.agent_orchestrator_service.dto.search.ProductSearchResponse;
+import com.cartesian.agent_orchestrator_service.dto.search.Recommendation;
+import com.cartesian.agent_orchestrator_service.dto.search.SearchCriteria;
+import com.cartesian.agent_orchestrator_service.dto.search.SearchKeywordResult;
+import com.cartesian.agent_orchestrator_service.dto.search.SearchRecommendationsRequest;
+import com.cartesian.agent_orchestrator_service.dto.search.SearchResultsResponse;
 import com.cartesian.agent_orchestrator_service.mapper.ProductOrchestratorMapper;
 import com.cartesian.agent_orchestrator_service.mapper.RecommendationMapper;
 import com.cartesian.agent_orchestrator_service.mapper.SearchCriteriaMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.locationtech.jts.geom.Polygon;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 public class ProductSearchService {
@@ -91,6 +102,13 @@ public class ProductSearchService {
             }
         }
         return new SearchResultsResponse(searchResults);
+    }
+
+    public Optional<ProductDto> getProductById(UUID id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        return productServiceClient.getProductById(id);
     }
 
     public ProductSearchResponse search(SearchCriteria criteria) {
