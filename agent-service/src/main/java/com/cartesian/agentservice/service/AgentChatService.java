@@ -28,7 +28,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnBean(ChatClient.Builder.class)
 public class AgentChatService {
 
     private static final Logger log = LoggerFactory.getLogger(AgentChatService.class);
@@ -40,7 +39,6 @@ public class AgentChatService {
             + "Be concise, friendly, and conversational. Use markdown formatting.";
 
     private final ChatClient chatClient;
-    private final AgentTools agentTools;
     private final ChatTurnContext turnContext;
     private final ConversationRepository conversationRepository;
     private final ObjectMapper objectMapper;
@@ -50,7 +48,6 @@ public class AgentChatService {
             ChatTurnContext turnContext,
             ConversationRepository conversationRepository,
             ObjectMapper objectMapper) {
-        this.agentTools = tools;
         this.turnContext = turnContext;
         this.chatClient = builder
                 .defaultSystem(DEFAULT_SYSTEM_PROMPT)

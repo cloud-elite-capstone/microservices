@@ -5,7 +5,6 @@ import com.cartesian.agentservice.service.AgentChatService;
 import com.cartesian.agentservice.service.AgentService;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +25,10 @@ public class AgentController {
 
     public AgentController(
             AgentService agentService,
-            Optional<AgentChatService> agentChatService
+            AgentChatService agentChatService
     ) {
         this.agentService = agentService;
-        this.agentChatService = agentChatService.orElse(null);
+        this.agentChatService = agentChatService;
     }
 
     @PostMapping("/recommendations")
