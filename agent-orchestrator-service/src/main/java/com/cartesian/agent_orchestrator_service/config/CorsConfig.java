@@ -1,4 +1,4 @@
-package com.cartesian.productservice.config;
+package com.cartesian.agent_orchestrator_service.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -20,4 +20,3 @@ public class CorsConfig implements WebMvcConfigurer {
                 .maxAge(3600);
     }
 }
-
