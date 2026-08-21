@@ -2,6 +2,7 @@ package com.cartesian.agent_orchestrator_service.mapper;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
@@ -28,7 +29,9 @@ public interface ProductOrchestratorMapper {
             return List.of();
         }
         return products.stream()
+                .filter(Objects::nonNull)
                 .map(product -> toRecommendation(product, objectMapper))
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -44,9 +47,10 @@ public interface ProductOrchestratorMapper {
 
     @Named("toJsonNode")
     default JsonNode toJsonNode(ProductDto product, @Context ObjectMapper objectMapper) {
-        if (product == null) {
+        if (product == null || objectMapper == null) {
             return null;
         }
         return objectMapper.valueToTree(product);
     }
 }
+

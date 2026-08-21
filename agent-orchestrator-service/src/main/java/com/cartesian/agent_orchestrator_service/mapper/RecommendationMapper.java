@@ -2,6 +2,7 @@ package com.cartesian.agent_orchestrator_service.mapper;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
@@ -18,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface RecommendationMapper {
 
-    @Mapping(target = "name", source = "item.name")
+    @Mapping(target = "name", source = "item", qualifiedByName = "resolveRecommendationName")
     @Mapping(target = "rationale", constant = "AI recommended matching candidate")
     @Mapping(target = "totalLandedCost", source = "item.product", qualifiedByName = "calculateLandedCost")
     @Mapping(target = "product", source = "item.product", qualifiedByName = "toJsonNode")
@@ -29,8 +30,24 @@ public interface RecommendationMapper {
             return List.of();
         }
         return items.stream()
+                .filter(Objects::nonNull)
                 .map(item -> toRecommendation(item, objectMapper))
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    @Named("resolveRecommendationName")
+    default String resolveRecommendationName(RecommendationItemDto item) {
+        if (item == null) {
+            return null;
+        }
+        if (item.getName() != null && !item.getName().isBlank()) {
+            return item.getName();
+        }
+        if (item.getProduct() != null) {
+            return item.getProduct().getName();
+        }
+        return null;
     }
 
     @Named("calculateLandedCost")
@@ -45,9 +62,10 @@ public interface RecommendationMapper {
 
     @Named("toJsonNode")
     default JsonNode toJsonNode(ProductDto product, @Context ObjectMapper objectMapper) {
-        if (product == null) {
+        if (product == null || objectMapper == null) {
             return null;
         }
         return objectMapper.valueToTree(product);
     }
 }
+
