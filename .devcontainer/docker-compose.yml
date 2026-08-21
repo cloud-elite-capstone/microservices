@@ -1,6 +1,13 @@
 services:
+  app:
+    image: mcr.microsoft.com/devcontainers/base:trixie
+    volumes:
+      - ..:/workspace:cached
+    networks:
+      - cartesian-net
+    command: sleep infinity
   postgres:
-    image: postgis/postgis:16-3.4
+    image: postgis/postgis:18-3.6-alpine
     container_name: cartesian-postgres
     environment:
       POSTGRES_USER: cartesian
@@ -9,13 +16,17 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - cartesian-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cartesian -d user_db"]
       interval: 5s
       timeout: 5s
       retries: 10
-
+networks:
+  cartesian-net:
+    driver: bridge
 volumes:
   pgdata:

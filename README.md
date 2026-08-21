@@ -13,12 +13,6 @@
 
 ## Local database
 
-Spin up a local PostgreSQL (with PostGIS) containing one database per service:
-
-```bash
-docker compose up -d
-```
-
 It creates the `cartesian` user (password `cartesian`) and the databases
 `user_db`, `shop_db`, `product_db`, `order_db`, and `agent_db`.
 Each service connects to `localhost:5432` by default and applies

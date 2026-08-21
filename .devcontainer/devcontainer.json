@@ -1,16 +1,26 @@
 {
   "name": "Cartesian Microservices",
-  "image": "mcr.microsoft.com/devcontainers/base:trixie",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
 
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "17",
       "installMaven": true,
       "installGradle": false
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": false
+    },
+    "ghcr.io/rails/devcontainer/features/postgres-client:1": {
+      "version": "18" 
     }
   },
 
-  "forwardPorts": [8081, 8082, 8083, 8084, 8085, 8086],
+  "forwardPorts": [8081, 8082, 8083, 8084, 8085, 8086, 5432],
 
   "customizations": {
     "vscode": {
