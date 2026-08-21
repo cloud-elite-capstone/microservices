@@ -1,0 +1,4 @@
+INSERT INTO conversations (id, user_id, history, system_instruction, created_at, updated_at) VALUES
+    ('00000000-0000-0000-0000-000000005001', '00000000-0000-0000-0000-000000000101', '[{"role":"user","content":"I need a laptop for work with all-day battery life."},{"role":"assistant","content":"I''d recommend the Slim Pro Laptop 15 — it has a Retina display and all-day battery [1]."}]', 'Be concise and recommend products within the user''s budget.', now(), now()),
+    ('00000000-0000-0000-0000-000000005002', '00000000-0000-0000-0000-000000000102', '[{"role":"user","content":"Looking for wireless earbuds with good noise cancelling."},{"role":"assistant","content":"The Cartesian Pro Wireless Buds offer active noise cancelling with deep bass [1]."}]', 'Prioritize audio quality and noise cancellation.', now(), now())
+ON CONFLICT (id) DO NOTHING;

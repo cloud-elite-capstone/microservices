@@ -1,20 +1,27 @@
 package com.cartesian.agentservice.config;
 
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.auth.oauth2.IdTokenCredentials;
-import com.google.auth.oauth2.IdTokenProvider;
 import java.io.IOException;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
+
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.IdTokenCredentials;
+import com.google.auth.oauth2.IdTokenProvider;
+
 import reactor.core.publisher.Mono;
 
 public class IdTokenExchangeFilter implements ExchangeFilterFunction {
     private final IdTokenCredentials idTokenCredentials;
 
-    public IdTokenExchangeFilter(String audience) throws IOException {
+    public IdTokenExchangeFilter(String audience, boolean enabled) throws IOException {
+        if (!enabled) {
+            this.idTokenCredentials = null;
+            return;
+        }
         GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
         if (!(credentials instanceof IdTokenProvider provider)) {
             throw new IllegalStateException(
@@ -29,6 +36,9 @@ public class IdTokenExchangeFilter implements ExchangeFilterFunction {
 
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
+        if (idTokenCredentials == null) {
+            return next.exchange(request);
+        }
         try {
             idTokenCredentials.refreshIfExpired();
             String token = idTokenCredentials.getAccessToken().getTokenValue();
