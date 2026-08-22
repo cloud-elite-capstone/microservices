@@ -1,18 +1,14 @@
 package com.cartesian.agentservice.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -35,54 +31,54 @@ public class AgentChatService {
 
     private static final Logger log = LoggerFactory.getLogger(AgentChatService.class);
 
-    private static final String DEFAULT_SYSTEM_PROMPT = "You are Cartesian, an expert AI shopping assistant. "
-            + "Use the available tools to search for and retrieve products from the catalog. "
-            + "When recommending multiple products, reference them as [1], [2], [3] in the order they appear. "
-            + "Focus on matching the user's budget, location, and style preferences. "
-            + "Be concise, friendly, and conversational. Use markdown formatting.";
+    private static final String DEFAULT_SYSTEM_PROMPT = """
+            You are Cartesian, an expert AI shopping assistant.
+            Use the available tools to search for and retrieve products from the catalog.
+            When recommending multiple products, reference them as [1], [2], [3] in the order they appear.
+            Focus on matching the user's budget, location, and style preferences.
+            Be concise, friendly, and conversational. Use markdown formatting.
+            """;
 
     private final ChatClient chatClient;
     private final ChatTurnContext turnContext;
     private final ConversationRepository conversationRepository;
     private final ObjectMapper objectMapper;
 
-    public AgentChatService(ChatClient.Builder builder,
-            AgentTools tools,
+    public AgentChatService(
+            ChatClient.Builder builder,
+            AgentTools localTools,
             ChatTurnContext turnContext,
             ConversationRepository conversationRepository,
             ObjectMapper objectMapper,
-            ObjectProvider<SyncMcpToolCallbackProvider> mcpToolCallbacks) {
+            ObjectProvider<ToolCallbackProvider> mcpToolCallbackProvider
+    ) {
         this.turnContext = turnContext;
-        ChatClient.Builder chatClientBuilder = builder
-                .defaultSystem(DEFAULT_SYSTEM_PROMPT)
-                .defaultTools(tools);
-        SyncMcpToolCallbackProvider provider = mcpToolCallbacks.getIfAvailable();
-        if (provider != null) {
-            chatClientBuilder.defaultToolCallbacks(provider);
-        }
-        this.chatClient = chatClientBuilder.build();
         this.conversationRepository = conversationRepository;
         this.objectMapper = objectMapper;
+
+        ChatClient.Builder clientBuilder = builder
+                .defaultSystem(DEFAULT_SYSTEM_PROMPT)
+                .defaultTools(localTools);
+
+        mcpToolCallbackProvider.ifAvailable(provider ->
+                clientBuilder.defaultTools(spec -> spec.callbacks(provider))
+        );
+
+        this.chatClient = clientBuilder.build();
     }
 
     public ChatResponse chat(ChatRequest request) {
-        // Load existing conversation or start a new one
         Conversation conversation = (request.getSessionId() != null)
                 ? conversationRepository.findById(request.getSessionId()).orElseGet(Conversation::new)
                 : new Conversation();
 
         List<ChatMessageDto> historyDtos = deserializeHistory(conversation.getHistory());
 
-        // Determine the effective system instruction for this turn
         String effectiveSystem = (request.getSystemInstruction() != null && !request.getSystemInstruction().isBlank())
                 ? request.getSystemInstruction()
                 : conversation.getSystemInstruction();
 
-        // Build message list for ChatClient
         List<Message> messages = new ArrayList<>();
-        if (effectiveSystem != null && !effectiveSystem.isBlank()) {
-            messages.add(new SystemMessage(effectiveSystem));
-        }
         for (ChatMessageDto msg : historyDtos) {
             if ("user".equalsIgnoreCase(msg.getRole())) {
                 messages.add(new UserMessage(msg.getContent()));
@@ -92,19 +88,29 @@ public class AgentChatService {
         }
         messages.add(new UserMessage(request.getMessage()));
 
-        // Call Vertex AI Gemini
         String reply;
+        List<ProductDto> referencedProducts;
+
         try {
-            reply = chatClient.prompt()
-                    .messages(messages)
-                    .call()
-                    .content();
+            turnContext.clear();
+
+            var promptSpec = chatClient.prompt().messages(messages);
+
+            if (effectiveSystem != null && !effectiveSystem.isBlank()) {
+                promptSpec.system(effectiveSystem);
+            }
+
+            reply = promptSpec.call().content();
+            referencedProducts = new ArrayList<>(turnContext.getRetrievedProducts());
         } catch (Exception e) {
-            log.error("Vertex AI call failed: {}", e.getMessage(), e);
+            log.error("Vertex AI/LLM call failed: {}", e.getMessage(), e);
             reply = "I encountered an issue processing your request. Please try again.";
+            referencedProducts = List.of();
+        } finally {
+            turnContext.clear();
         }
 
-        // Persist the updated conversation history
+        // Persist conversation
         if (request.getUserId() != null) {
             conversation.setUserId(request.getUserId());
         }
@@ -115,9 +121,6 @@ public class AgentChatService {
             conversation.setSystemInstruction(effectiveSystem);
         }
         conversationRepository.save(conversation);
-
-        // Get the products discovered by AgentTools during this turn for right-pane display
-        List<ProductDto> referencedProducts = turnContext.getRetrievedProducts();
 
         return new ChatResponse(conversation.getId(), reply, referencedProducts);
     }
@@ -162,12 +165,9 @@ public class AgentChatService {
     }
 
     private List<ChatMessageDto> deserializeHistory(String json) {
-        if (json == null || json.isBlank()) {
-            return new ArrayList<>();
-        }
+        if (json == null || json.isBlank()) return new ArrayList<>();
         try {
-            return objectMapper.readValue(json, new TypeReference<List<ChatMessageDto>>() {
-            });
+            return objectMapper.readValue(json, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             log.warn("Failed to deserialize conversation history: {}", e.getMessage());
             return new ArrayList<>();
