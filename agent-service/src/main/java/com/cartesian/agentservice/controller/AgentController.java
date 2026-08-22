@@ -38,33 +38,16 @@ public class AgentController {
 
     @PostMapping("/chat")
     public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest request) {
-        if (agentChatService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(new ChatResponse(
-                    request.getSessionId(),
-                    "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured.",
-                    List.of()));
-        }
         return ResponseEntity.ok(agentChatService.chat(request));
     }
 
     @GetMapping("/chat")
     public ResponseEntity<List<ConversationSummaryDto>> listChatSessions(@RequestParam(required = false) UUID userId) {
-        if (agentChatService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(List.of());
-//                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
-        }
         return ResponseEntity.ok(agentChatService.getUserConversations(userId));
     }
 
     @GetMapping("/chat/{sessionId}")
     public ResponseEntity<ConversationDto> getChatHistory(@PathVariable UUID sessionId) {
-        if (agentChatService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(new ConversationDto());
-//                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
-        }
         return agentChatService.getConversation(sessionId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -72,15 +55,9 @@ public class AgentController {
 
     @DeleteMapping("/chat/{sessionId}")
     public ResponseEntity<Void> deleteChat(@PathVariable UUID sessionId) {
-        if (agentChatService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
-//                    .body(Map.of("message", "Chat is not available. Set the GCP_PROJECT_ID environment variable and ensure Application Default Credentials are configured."));
-        }
-        boolean deleted = agentChatService.deleteConversation(sessionId);
-        if (deleted) {
+        if (agentChatService.deleteConversation(sessionId)) {
             return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.notFound().build();
     }
 }
