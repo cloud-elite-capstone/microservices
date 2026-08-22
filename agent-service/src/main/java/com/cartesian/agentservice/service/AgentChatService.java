@@ -1,5 +1,21 @@
 package com.cartesian.agentservice.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Service;
+
 import com.cartesian.agentservice.context.ChatTurnContext;
 import com.cartesian.agentservice.dto.ChatMessageDto;
 import com.cartesian.agentservice.dto.ChatRequest;
@@ -13,19 +29,6 @@ import com.cartesian.agentservice.tools.AgentTools;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Service;
 
 @Service
 public class AgentChatService {
@@ -47,12 +50,17 @@ public class AgentChatService {
             AgentTools tools,
             ChatTurnContext turnContext,
             ConversationRepository conversationRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ObjectProvider<SyncMcpToolCallbackProvider> mcpToolCallbacks) {
         this.turnContext = turnContext;
-        this.chatClient = builder
+        ChatClient.Builder chatClientBuilder = builder
                 .defaultSystem(DEFAULT_SYSTEM_PROMPT)
-                .defaultTools(tools)
-                .build();
+                .defaultTools(tools);
+        SyncMcpToolCallbackProvider provider = mcpToolCallbacks.getIfAvailable();
+        if (provider != null) {
+            chatClientBuilder.defaultToolCallbacks(provider);
+        }
+        this.chatClient = chatClientBuilder.build();
         this.conversationRepository = conversationRepository;
         this.objectMapper = objectMapper;
     }

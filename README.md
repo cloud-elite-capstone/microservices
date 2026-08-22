@@ -9,7 +9,6 @@
 | product-service | 8083 |
 | order-service | 8084 |
 | agent-service | 8085 |
-| agent-orchestrator-service | 8086 |
 
 ## Local database
 

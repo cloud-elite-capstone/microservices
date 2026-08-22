@@ -1,111 +1,93 @@
 package com.cartesian.agentservice.tools;
 
-import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import com.cartesian.agentservice.config.IdTokenExchangeFilter;
 import com.cartesian.agentservice.context.ChatTurnContext;
 import com.cartesian.agentservice.dto.ProductDto;
+import com.cartesian.agentservice.dto.search.Recommendation;
+import com.cartesian.agentservice.dto.search.SearchKeywordResult;
+import com.cartesian.agentservice.dto.search.SearchRecommendationsRequest;
+import com.cartesian.agentservice.dto.search.SearchResultsResponse;
+import com.cartesian.agentservice.service.ProductSearchService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Component
 public class AgentTools {
 
     private static final Logger log = LoggerFactory.getLogger(AgentTools.class);
 
-    private final WebClient webClient;
-    private final String orchestratorUrl;
+    private final ProductSearchService productSearchService;
     private final ObjectMapper objectMapper;
     private final ChatTurnContext turnContext;
 
-    public AgentTools(WebClient.Builder webClientBuilder,
+    public AgentTools(ProductSearchService productSearchService,
             ObjectMapper objectMapper,
-            ChatTurnContext turnContext,
-            @Value("${orchestrator.url:http://localhost:8086}") String orchestratorUrl,
-            @Value("${microservices.auth.id-token.enabled:false}") boolean idTokenEnabled) {
+            ChatTurnContext turnContext) {
+        this.productSearchService = productSearchService;
         this.objectMapper = objectMapper;
         this.turnContext = turnContext;
-        this.orchestratorUrl = orchestratorUrl;
-        try {
-            this.webClient = webClientBuilder
-                    .filter(new IdTokenExchangeFilter(orchestratorUrl, idTokenEnabled))
-                    .build();
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to create ID token filter for orchestrator service", e);
-        }
     }
 
     @Tool(description = "Search for products by keyword. Optionally provide budget in PHP (e.g. 10000.0) and location. Returns a numbered list of matching products.")
     public String searchProducts(String keyword, Double budget, String location) {
         log.info("[TOOL] searchProducts called: keyword='{}', budget={}, location='{}'", keyword, budget, location);
         try {
-            ObjectNode body = objectMapper.createObjectNode();
-            body.putArray("search_keywords").add(keyword == null ? "" : keyword);
-            if (budget != null) {
-                body.put("budget", String.valueOf(budget));
-            }
-            if (location != null && !location.isBlank()) {
-                body.put("location", location);
-            }
+            JsonNode locationNode = (location != null && !location.isBlank())
+                    ? objectMapper.valueToTree(location)
+                    : null;
 
-            String response = webClient.post()
-                    .uri(orchestratorUrl + "/orchestrator/search")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            SearchRecommendationsRequest request = new SearchRecommendationsRequest(
+                    List.of(keyword == null ? "" : keyword),
+                    locationNode,
+                    budget != null ? String.valueOf(budget) : null,
+                    null
+            );
 
-            if (response == null || response.isBlank()) {
-                return "No products found for: " + keyword;
-            }
+            SearchResultsResponse response = productSearchService.searchRecommendations(request);
 
-            JsonNode root = objectMapper.readTree(response);
-
-            JsonNode results = root.path("search_results");
-            if (results.isMissingNode() || !results.isArray() || results.isEmpty()) {
+            List<SearchKeywordResult> groups = response == null ? List.of() : response.searchResults();
+            if (groups == null || groups.isEmpty()) {
                 return "No products found for: " + keyword;
             }
 
             StringBuilder sb = new StringBuilder();
             int index = 1;
 
-            for (JsonNode group : results) {
-                JsonNode items = group.path("Items");
-                if (!items.isArray()) {
+            for (SearchKeywordResult group : groups) {
+                if (group.items() == null) {
                     continue;
                 }
-                for (JsonNode item : items) {
-                    JsonNode productNode = item.path("product");
-                    if (!productNode.isObject()) {
-                        productNode = item;
-                    }
-
-                    try {
-                        ProductDto productDto = objectMapper.treeToValue(productNode, ProductDto.class);
-                        if (productDto != null) {
-                            turnContext.addProduct(productDto);
+                for (Recommendation recommendation : group.items()) {
+                    JsonNode productNode = recommendation == null ? null : recommendation.product();
+                    ProductDto productDto = null;
+                    if (productNode != null && productNode.isObject()) {
+                        try {
+                            productDto = objectMapper.treeToValue(productNode, ProductDto.class);
+                            if (productDto != null) {
+                                turnContext.addProduct(productDto);
+                            }
+                        } catch (Exception ex) {
+                            log.warn("Could not deserialize product item: {}", ex.getMessage());
                         }
-                    } catch (Exception ex) {
-                        log.warn("Could not deserialize product item: {}", ex.getMessage());
                     }
 
-                    String name = textOr(productNode.path("name"), textOr(item.path("name"), "Unknown"));
-                    JsonNode priceNode = productNode.path("price");
-                    String desc = textOr(productNode.path("description"), "");
+                    String name = (recommendation != null && recommendation.name() != null && !recommendation.name().isBlank())
+                            ? recommendation.name()
+                            : (productDto != null && productDto.getName() != null ? productDto.getName() : "Unknown");
+
+                    String desc = productDto != null && productDto.getDescription() != null ? productDto.getDescription() : "";
+                    String price = productDto != null && productDto.getPrice() != null ? productDto.getPrice().toPlainString() : null;
 
                     sb.append("[").append(index++).append("] ").append(name);
-                    if (priceNode != null && priceNode.isValueNode() && !priceNode.isNull()) {
-                        sb.append(" — \u20b1").append(priceNode.asText());
+                    if (price != null && !price.isBlank()) {
+                        sb.append(" — \u20b1").append(price);
                     }
                     if (!desc.isBlank()) {
                         sb.append(" | ").append(desc.length() > 150 ? desc.substring(0, 147) + "..." : desc);
@@ -126,11 +108,7 @@ public class AgentTools {
     public String getProductById(String productId) {
         log.info("[TOOL] getProductById called: productId='{}'", productId);
         try {
-            ProductDto product = webClient.get()
-                    .uri(orchestratorUrl + "/orchestrator/products/" + productId)
-                    .retrieve()
-                    .bodyToMono(ProductDto.class)
-                    .block();
+            ProductDto product = productSearchService.getProductById(UUID.fromString(productId)).orElse(null);
 
             if (product == null) {
                 return "Product not found: " + productId;
@@ -146,13 +124,5 @@ public class AgentTools {
             log.error("[TOOL] getProductById failed: {}", e.getMessage(), e);
             return "Could not retrieve product details. The product may not exist.";
         }
-    }
-
-    private static String textOr(JsonNode node, String defaultValue) {
-        if (node == null || node.isMissingNode() || node.isNull() || !node.isValueNode()) {
-            return defaultValue;
-        }
-        String text = node.asText();
-        return (text == null || text.isBlank()) ? defaultValue : text;
     }
 }
