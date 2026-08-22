@@ -9,9 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Query("""
-            SELECT p FROM Product p
-            WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            """)
+        SELECT p FROM Product p
+        WHERE LOWER(COALESCE(p.name, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        """)
     List<Product> searchByNameOrDescription(@Param("keyword") String keyword);
 }

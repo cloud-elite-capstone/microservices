@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.UUID;
 
 import com.cartesian.productservice.dto.ProductDto;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.cartesian.productservice.dto.ProductRequest;
-import com.cartesian.productservice.dto.ProductResponse;
 import com.cartesian.productservice.exception.CategoryNotFoundException;
 import com.cartesian.productservice.exception.ProductNotFoundException;
 import com.cartesian.productservice.mapper.ProductMapper;
@@ -19,6 +19,8 @@ import com.cartesian.productservice.repository.ProductRepository;
 
 @Service
 public class ProductService {
+//    private static final Logger log = LoggerFactory.getLogger(ProductService.class);
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
@@ -44,7 +46,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductDto getProductById(UUID id) {
         Product product = findProductByIdOrThrow(id);
-        return productMapper.toResponse(product);
+        return productMapper.toDto(product);
     }
 
     @Transactional
@@ -54,7 +56,7 @@ public class ProductService {
         Product product = productMapper.toEntity(request);
 
         Product saved = productRepository.save(product);
-        return productMapper.toResponse(saved);
+        return productMapper.toDto(saved);
     }
 
     @Transactional
@@ -65,7 +67,7 @@ public class ProductService {
         productMapper.updateEntityFromRequest(request, product);
 
         Product updated = productRepository.save(product);
-        return productMapper.toResponse(updated);
+        return productMapper.toDto(updated);
     }
 
     @Transactional
@@ -77,7 +79,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductDto> searchLocalProducts(String query) {
         return productRepository.searchByNameOrDescription(query).stream()
-                .map(productMapper::toResponse)
+                .map(productMapper::toDto)
                 .toList();
     }
 }

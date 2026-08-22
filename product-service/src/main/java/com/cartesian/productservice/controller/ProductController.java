@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.cartesian.productservice.dto.ProductDto;
+import com.cartesian.productservice.dto.SearchLocalProductsRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,8 +35,8 @@ public class ProductController {
     }
 
     @PostMapping(value = "/search")
-    public ResponseEntity<List<ProductDto>> searchLocalProducts(@RequestBody(required = false) String query) {
-        return ResponseEntity.ok(productService.searchLocalProducts(query != null ? query : ""));
+    public ResponseEntity<List<ProductDto>> searchLocalProducts(@RequestBody(required = false) SearchLocalProductsRequest request) {
+        return ResponseEntity.ok(productService.searchLocalProducts(request.query()));
     }
 
     @PostMapping
