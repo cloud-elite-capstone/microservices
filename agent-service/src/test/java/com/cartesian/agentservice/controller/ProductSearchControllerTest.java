@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Collections;
 
+import com.cartesian.agentservice.config.WebFluxConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +19,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import com.cartesian.agentservice.config.WebMvcConfig;
 import com.cartesian.agentservice.dto.search.ProductSearchRequest;
 import com.cartesian.agentservice.dto.search.SearchResultsResponse;
 import com.cartesian.agentservice.service.ProductSearchService;
@@ -37,7 +37,7 @@ class ProductSearchControllerTest {
     @BeforeEach
     void setUp() {
         FormattingConversionService conversionService = new FormattingConversionService();
-        new WebMvcConfig().addFormatters(conversionService);
+        new WebFluxConfig().addFormatters(conversionService);
 
         mockMvc = MockMvcBuilders.standaloneSetup(productSearchController)
                 .setConversionService(conversionService)

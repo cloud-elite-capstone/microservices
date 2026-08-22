@@ -1,10 +1,10 @@
 package com.cartesian.agentservice.config;
 
 import org.locationtech.jts.geom.GeometryFactory;
+import org.n52.jackson.datatype.jts.JtsModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.bedatadriven.jackson.datatype.jts.JtsModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration

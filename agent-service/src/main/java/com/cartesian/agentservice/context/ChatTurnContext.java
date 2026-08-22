@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -25,6 +24,10 @@ public class ChatTurnContext {
     }
 
     public List<ProductDto> getRetrievedProducts() {
-        return Collections.unmodifiableList(new ArrayList<>(retrievedProducts));
+        return List.copyOf(retrievedProducts);
+    }
+
+    public void clear() {
+        this.retrievedProducts.clear();
     }
 }
